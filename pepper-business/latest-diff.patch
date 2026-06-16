@@ -1,0 +1,264 @@
+diff --git a/docs/ai/scripts/claude-handoff b/docs/ai/scripts/claude-handoff
+index ee2d20840..6575fe6d6 100755
+--- a/docs/ai/scripts/claude-handoff
++++ b/docs/ai/scripts/claude-handoff
+@@ -1,21 +1,28 @@
+ #!/usr/bin/env bash
+ #
+-# claude-handoff — publish the latest Claude Code response + repo state to an FTP
+-# handoff location so it can be shared (e.g. with ChatGPT) via a single public URL.
++# claude-handoff — publish the latest Claude Code response + repo state to a GitHub
++# "handoff" repository so it can be shared (e.g. with ChatGPT) via a single URL.
+ #
+ # Usage:   ./docs/ai/scripts/claude-handoff
+ #
+-# Config:  read from .claude/local/hosting.env (repo-local, gitignored).
+-#          Required keys: FTP_HOST, FTP_USER, FTP_PASSWORD, PUBLIC_URL
+-#          Optional keys: FTP_PORT (default 21), HANDOFF_RESPONSE_FILE
++# Config:  read from .claude/local/github.env (repo-local, gitignored).
++#          Required keys: GITHUB_TOKEN, GITHUB_AI_HANDOFFS_REPO   (e.g. owner/name)
++#          Optional keys: HANDOFF_RESPONSE_FILE, HANDOFF_PROJECT (default: pepper-business)
++#
++# Publishes into the handoff repo under <project>/ :
++#   <project>/latest.md            (overwritten each run)
++#   <project>/latest-*.txt|.patch  (overwritten each run)
++#   <project>/archive/<ts>-*       (timestamped, kept)
+ #
+ # SECURITY: this script never prints secrets and never commits them. The config
+-#           lives only under .claude/local/ (gitignored). Do NOT add credentials
+-#           to this file — it is safe to commit; the env file is not.
++#           lives only under .claude/local/ (gitignored). The token is passed to
++#           git via a credential helper that reads it from the environment, so it
++#           is never written to disk or embedded in a remote URL. Do NOT add
++#           credentials to this file — it is safe to commit; the env file is not.
+ #
+ set -euo pipefail
+ 
+-# --- locate config (repo-local first, then a legacy home fallback) -----------
++# --- locate config (repo-local) ----------------------------------------------
+ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+ if [ -z "$REPO_ROOT" ]; then
+   # fall back to the script's own location (…/docs/ai/scripts/claude-handoff)
+@@ -23,14 +30,14 @@ if [ -z "$REPO_ROOT" ]; then
+   REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+ fi
+ 
+-ENV_FILE="$REPO_ROOT/.claude/local/hosting.env"
+-if [ ! -f "$ENV_FILE" ] && [ -f "$HOME/.claude/hosting.env" ]; then
+-  ENV_FILE="$HOME/.claude/hosting.env"   # legacy location, kept for compatibility
++ENV_FILE="$REPO_ROOT/.claude/local/github.env"
++if [ ! -f "$ENV_FILE" ] && [ -f "$HOME/.claude/github.env" ]; then
++  ENV_FILE="$HOME/.claude/github.env"   # legacy/home location, kept for compatibility
+ fi
+ 
+ if [ ! -f "$ENV_FILE" ]; then
+-  echo "ERROR: missing hosting config. Expected: $REPO_ROOT/.claude/local/hosting.env" >&2
+-  echo "       Create it with FTP_HOST, FTP_USER, FTP_PASSWORD, PUBLIC_URL (and optional FTP_PORT)." >&2
++  echo "ERROR: missing GitHub config. Expected: $REPO_ROOT/.claude/local/github.env" >&2
++  echo "       Create it with GITHUB_TOKEN and GITHUB_AI_HANDOFFS_REPO (owner/name)." >&2
+   exit 1
+ fi
+ 
+@@ -39,22 +46,23 @@ set -a; source "$ENV_FILE"; set +a
+ 
+ # --- validate required vars (without echoing their values) -------------------
+ missing=()
+-for var in FTP_HOST FTP_USER FTP_PASSWORD PUBLIC_URL; do
++for var in GITHUB_TOKEN GITHUB_AI_HANDOFFS_REPO; do
+   if [ -z "${!var:-}" ]; then missing+=("$var"); fi
+ done
+ if [ "${#missing[@]}" -gt 0 ]; then
+-  echo "ERROR: missing required keys in hosting.env: ${missing[*]}" >&2
++  echo "ERROR: missing required keys in github.env: ${missing[*]}" >&2
+   exit 1
+ fi
+ 
+-FTP_PORT="${FTP_PORT:-21}"
+-PUBLIC_URL="${PUBLIC_URL%/}"   # strip trailing slash
++PROJECT="${HANDOFF_PROJECT:-pepper-business}"
+ RESPONSE_FILE="${HANDOFF_RESPONSE_FILE:-/tmp/claude-1000/response.md}"
++GITHUB_REPO="${GITHUB_AI_HANDOFFS_REPO%.git}"   # tolerate a trailing .git
+ 
+-# --- collect everything into a staging dir -----------------------------------
++# --- collect repo state into a staging dir -----------------------------------
+ STAMP="$(date +"%Y%m%d-%H%M%S")"
+ OUT="$(mktemp -d "/tmp/claude-handoff-$STAMP.XXXX")"
+-trap 'rm -rf "$OUT"' EXIT
++WORK="$(mktemp -d "/tmp/claude-handoff-repo-$STAMP.XXXX")"
++trap 'rm -rf "$OUT" "$WORK"' EXIT
+ 
+ if [ -f "$RESPONSE_FILE" ]; then
+   cp "$RESPONSE_FILE" "$OUT/response.md"
+@@ -74,6 +82,26 @@ git -C "$REPO_ROOT" ls-files --others --exclude-standard >> "$OUT/files.txt" 2>/
+ 
+ BRANCH="$(cat "$OUT/branch.txt")"
+ 
++# --- git auth helper (token read from env, never on the command line) --------
++# The credential helper is a shell snippet stored in git config; it references
++# $GITHUB_TOKEN by name, so the value lives only in the process environment and
++# is never written to disk or shown in `ps`.
++CRED_HELPER='!f() { echo username=x-access-token; echo "password=$GITHUB_TOKEN"; }; f'
++git_auth() { git -c "credential.helper=$CRED_HELPER" "$@"; }
++
++REMOTE_URL="https://github.com/${GITHUB_REPO}.git"
++
++# --- clone the handoff repo (shallow) ----------------------------------------
++if ! git_auth clone --depth 1 "$REMOTE_URL" "$WORK" 2>/dev/null; then
++  echo "ERROR: could not clone handoff repo (check GITHUB_AI_HANDOFFS_REPO and GITHUB_TOKEN)." >&2
++  exit 1
++fi
++
++TARGET_BRANCH="$(git -C "$WORK" symbolic-ref --short HEAD 2>/dev/null || echo main)"
++
++RAW_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/${TARGET_BRANCH}/${PROJECT}"
++BLOB_BASE="https://github.com/${GITHUB_REPO}/blob/${TARGET_BRANCH}/${PROJECT}"
++
+ # --- build the combined latest.md --------------------------------------------
+ # NOTE: $(cat …) output is inserted literally; heredoc does not re-evaluate it,
+ # so backticks / $() inside the response are safe.
+@@ -111,13 +139,13 @@ $(cat "$OUT/files.txt")
+ 
+ ## Public files
+ 
+-- $PUBLIC_URL/latest.md
+-- $PUBLIC_URL/latest-status.txt
+-- $PUBLIC_URL/latest-diff-stat.txt
+-- $PUBLIC_URL/latest-diff.patch
+-- $PUBLIC_URL/latest-files.txt
+-- $PUBLIC_URL/latest-branch.txt
+-- $PUBLIC_URL/$STAMP-README.md
++- $BLOB_BASE/latest.md
++- $BLOB_BASE/latest-status.txt
++- $BLOB_BASE/latest-diff-stat.txt
++- $BLOB_BASE/latest-diff.patch
++- $BLOB_BASE/latest-files.txt
++- $BLOB_BASE/latest-branch.txt
++- $BLOB_BASE/archive/$STAMP-README.md
+ EOF
+ 
+ # --- archive README ----------------------------------------------------------
+@@ -127,72 +155,64 @@ cat > "$OUT/README.md" <<EOF
+ Branch: $BRANCH
+ 
+ Latest (overwritten each run):
+-- $PUBLIC_URL/latest.md
+-- $PUBLIC_URL/latest-status.txt
+-- $PUBLIC_URL/latest-diff-stat.txt
+-- $PUBLIC_URL/latest-diff.patch
+-- $PUBLIC_URL/latest-files.txt
+-- $PUBLIC_URL/latest-branch.txt
++- $BLOB_BASE/latest.md
++- $BLOB_BASE/latest-status.txt
++- $BLOB_BASE/latest-diff-stat.txt
++- $BLOB_BASE/latest-diff.patch
++- $BLOB_BASE/latest-files.txt
++- $BLOB_BASE/latest-branch.txt
+ 
+ Archive (this run):
+-- $PUBLIC_URL/$STAMP-response.md
+-- $PUBLIC_URL/$STAMP-status.txt
+-- $PUBLIC_URL/$STAMP-diff-stat.txt
+-- $PUBLIC_URL/$STAMP-diff.patch
+-- $PUBLIC_URL/$STAMP-files.txt
+-- $PUBLIC_URL/$STAMP-branch.txt
++- $BLOB_BASE/archive/$STAMP-response.md
++- $BLOB_BASE/archive/$STAMP-status.txt
++- $BLOB_BASE/archive/$STAMP-diff-stat.txt
++- $BLOB_BASE/archive/$STAMP-diff.patch
++- $BLOB_BASE/archive/$STAMP-files.txt
++- $BLOB_BASE/archive/$STAMP-branch.txt
+ EOF
+ 
+-# --- upload ------------------------------------------------------------------
+-FTP_BASE="ftp://${FTP_HOST}:${FTP_PORT}"
+-
+-# TLS mode (FTP_TLS in hosting.env):
+-#   require  (default) — require FTPS and verify the server certificate (most secure).
+-#   insecure           — require FTPS but skip cert verification (use for shared hosts
+-#                        whose TLS cert does not match the FTP hostname; the channel is
+-#                        still encrypted, so the password is not sent in cleartext).
+-#   none               — plain FTP, no encryption (NOT recommended; password in cleartext).
+-FTP_TLS="${FTP_TLS:-require}"
+-TLS_FLAGS=()
+-case "$FTP_TLS" in
+-  require)  TLS_FLAGS=(--ssl-reqd) ;;
+-  insecure) TLS_FLAGS=(--ssl-reqd --insecure) ;;
+-  none)     TLS_FLAGS=() ;;
+-  *) echo "ERROR: invalid FTP_TLS='$FTP_TLS' (use require|insecure|none)" >&2; exit 1 ;;
+-esac
+-
+-upload() {
+-  local local_file="$1" remote_file="$2"
+-  # -sS: quiet but show errors; --ftp-create-dirs: mkdir as needed.
+-  # Credentials are passed via -u and are never echoed.
+-  if ! curl -sS --fail "${TLS_FLAGS[@]}" --ftp-create-dirs \
+-        -T "$local_file" \
+-        -u "$FTP_USER:$FTP_PASSWORD" \
+-        "$FTP_BASE/$remote_file"; then
+-    echo "ERROR: upload failed for $remote_file" >&2
+-    return 1
+-  fi
+-}
+-
+-# latest (stable names)
+-upload "$OUT/latest.md"        "latest.md"
+-upload "$OUT/status.txt"       "latest-status.txt"
+-upload "$OUT/diff-stat.txt"    "latest-diff-stat.txt"
+-upload "$OUT/diff.patch"       "latest-diff.patch"
+-upload "$OUT/files.txt"        "latest-files.txt"
+-upload "$OUT/branch.txt"       "latest-branch.txt"
++# --- lay out files in the handoff repo ---------------------------------------
++PROJECT_DIR="$WORK/$PROJECT"
++ARCHIVE_DIR="$PROJECT_DIR/archive"
++mkdir -p "$ARCHIVE_DIR"
++
++# latest (stable names, overwritten each run)
++cp "$OUT/latest.md"     "$PROJECT_DIR/latest.md"
++cp "$OUT/status.txt"    "$PROJECT_DIR/latest-status.txt"
++cp "$OUT/diff-stat.txt" "$PROJECT_DIR/latest-diff-stat.txt"
++cp "$OUT/diff.patch"    "$PROJECT_DIR/latest-diff.patch"
++cp "$OUT/files.txt"     "$PROJECT_DIR/latest-files.txt"
++cp "$OUT/branch.txt"    "$PROJECT_DIR/latest-branch.txt"
+ 
+ # timestamped archive
+-upload "$OUT/response.md"      "$STAMP-response.md"
+-upload "$OUT/status.txt"       "$STAMP-status.txt"
+-upload "$OUT/diff-stat.txt"    "$STAMP-diff-stat.txt"
+-upload "$OUT/diff.patch"       "$STAMP-diff.patch"
+-upload "$OUT/files.txt"        "$STAMP-files.txt"
+-upload "$OUT/branch.txt"       "$STAMP-branch.txt"
+-upload "$OUT/README.md"        "$STAMP-README.md"
++cp "$OUT/response.md"   "$ARCHIVE_DIR/$STAMP-response.md"
++cp "$OUT/status.txt"    "$ARCHIVE_DIR/$STAMP-status.txt"
++cp "$OUT/diff-stat.txt" "$ARCHIVE_DIR/$STAMP-diff-stat.txt"
++cp "$OUT/diff.patch"    "$ARCHIVE_DIR/$STAMP-diff.patch"
++cp "$OUT/files.txt"     "$ARCHIVE_DIR/$STAMP-files.txt"
++cp "$OUT/branch.txt"    "$ARCHIVE_DIR/$STAMP-branch.txt"
++cp "$OUT/README.md"     "$ARCHIVE_DIR/$STAMP-README.md"
++
++# --- commit + push -----------------------------------------------------------
++git -C "$WORK" config user.email "claude-handoff@pepper.local"
++git -C "$WORK" config user.name  "Claude Handoff"
++
++git -C "$WORK" add -A
++if git -C "$WORK" diff --cached --quiet; then
++  echo "Nothing to publish (no changes)."
++  exit 0
++fi
++
++git -C "$WORK" commit -q -m "handoff($PROJECT): $STAMP [$BRANCH]"
++
++if ! git_auth -C "$WORK" push -q origin "HEAD:$TARGET_BRANCH"; then
++  echo "ERROR: push to $GITHUB_REPO failed." >&2
++  exit 1
++fi
+ 
+ # --- report ------------------------------------------------------------------
+ echo ""
+-echo "Claude handoff uploaded."
+-echo "Latest:  $PUBLIC_URL/latest.md"
+-echo "Archive: $PUBLIC_URL/$STAMP-README.md"
++echo "Claude handoff published to github.com/$GITHUB_REPO ($TARGET_BRANCH)."
++echo "Latest:  $BLOB_BASE/latest.md"
++echo "Raw:     $RAW_BASE/latest.md"
++echo "Archive: $BLOB_BASE/archive/$STAMP-README.md"
