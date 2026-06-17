@@ -1,59 +1,13 @@
-# Claude Handoff — 20260616-224228
+# Claude Handoff — 20260617-102654
 
 - **Branch:** `vex-na-update-docs`
-- **Generated:** 20260616-224228
+- **Generated:** 20260617-102654
 
 ---
 
 ## Response
 
-## GitHub Migration Test
-
-Timestamp: 2026-06-16 22:42:25 EEST
-
-This handoff was published through the new GitHub publishing flow.
-
----
-
-The migration is complete and verified. Here's the summary.
-
-## What changed
-
-The AI handoff publishing system now publishes to **GitHub** instead of NG Dev Studio / SuperHosting via SFTP. Scope was kept tight to the handoff workflow — 3 files touched.
-
-| File                             | Change                                                                                                                                               |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/ai/scripts/claude-handoff` | SFTP/FTPS upload removed; replaced with a `git` clone → write → commit → push flow into the GitHub handoff repo. Same generated files and structure. |
-| `docs/ai/scripts/README.md`      | Rewritten config table (`github.env` keys), publish targets, and security rules.                                                                     |
-| `AGENTS.md`                      | "Task Handoff" section updated to reference GitHub + `github.env`; freshness date already today.                                                     |
-
-### How it works now
-- Reads `.claude/local/github.env` → `GITHUB_TOKEN`, `GITHUB_AI_HANDOFFS_REPO` (plus optional `HANDOFF_PROJECT`, default `pepper-business`, and `HANDOFF_RESPONSE_FILE`).
-- Collects the same content as before (response + branch/status/diff-stat/diff/files) and builds the same `latest.md`.
-- Shallow-clones the handoff repo, lays files out, commits, and pushes — auto-detecting the repo's default branch.
-- The token is passed to git via a **credential helper that reads it from the environment**, so it's never written to disk, embedded in a remote URL, or visible in `ps`. No secrets are printed; only the public GitHub URLs are.
-
-### Repository structure (as requested)
-```
-pepper-business/latest.md                  (+ latest-status/diff-stat/diff/files/branch)
-pepper-business/archive/<ts>-response.md    (+ status/diff-stat/diff/files/branch/README)
-```
-
-## Test publish — verified
-
-Ran `./docs/ai/scripts/claude-handoff`. Push **succeeded** to `sharkydmm/ngdevstudio-ai-handoffs` (branch `main`), confirmed by re-cloning and listing the tree — commit `54ef44e  Claude Handoff  handoff(pepper-business): 20260616-223705 [vex-na-update-docs]` with all 13 files present.
-
-### Resulting GitHub URLs
-- **Latest (blob):** https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/latest.md
-- **Latest (raw):** https://raw.githubusercontent.com/sharkydmm/ngdevstudio-ai-handoffs/main/pepper-business/latest.md
-- **Archive README:** https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/archive/20260616-223705-README.md
-
-## Notes
-- Future runs of `./docs/ai/scripts/claude-handoff` (the same command referenced in AGENTS.md "Task Handoff") now publish to GitHub automatically — no command name changed.
-- The old `.claude/local/hosting.env` (FTP credentials) is now unused. It's gitignored local-only config; I left it untouched rather than delete your file — you can safely remove it.
-- These are local edits only; I haven't committed/pushed the repo changes (your "no direct push to master" rule, and you're on `vex-na-update-docs`). Let me know if you'd like them committed.
-
-Want me to commit these doc/script changes to the current branch?
+_No Claude response was found at `/tmp/claude-1000/response.md` at handoff time._
 
 ---
 
@@ -61,25 +15,64 @@ Want me to commit these doc/script changes to the current branch?
 
 ```
  M AGENTS.md
- M docs/ai/scripts/README.md
- M docs/ai/scripts/claude-handoff
+ M docs/START_HERE.md
+ M docs/ai/domain-map.md
+ M docs/domains/README.md
+ M docs/index.md
+ M docs/onboarding/README.md
+ M docs/onboarding/common-workflows.md
+?? docs/data-model/
+?? docs/documentation-audit/2026-06-17-confidence-and-verification-audit.md
+?? docs/domains/thread-lifecycle.md
+?? docs/domains/thread-state-machine.md
+?? docs/domains/thread-troubleshooting.md
+?? docs/onboarding/feature-development-walkthrough.md
+?? docs/onboarding/first-day.md
+?? docs/onboarding/glossary.md
+?? docs/onboarding/production-support.md
+?? docs/production-support/
 ```
 
 ## Diff stat (`git diff --stat`)
 
 ```
- AGENTS.md                      |   6 +-
- docs/ai/scripts/README.md      |  39 ++++-----
- docs/ai/scripts/claude-handoff | 192 +++++++++++++++++++++++------------------
- 3 files changed, 128 insertions(+), 109 deletions(-)
+ AGENTS.md                           |  7 +++++--
+ docs/START_HERE.md                  |  5 ++++-
+ docs/ai/domain-map.md               |  7 ++++---
+ docs/domains/README.md              |  5 +++--
+ docs/index.md                       | 20 ++++++++++++++++++--
+ docs/onboarding/README.md           | 32 ++++++++++++++++++++++++++++----
+ docs/onboarding/common-workflows.md |  4 ++++
+ 7 files changed, 66 insertions(+), 14 deletions(-)
 ```
 
 ## Changed files (tracked diff + untracked)
 
 ```
 AGENTS.md
-docs/ai/scripts/README.md
-docs/ai/scripts/claude-handoff
+docs/START_HERE.md
+docs/ai/domain-map.md
+docs/domains/README.md
+docs/index.md
+docs/onboarding/README.md
+docs/onboarding/common-workflows.md
+docs/data-model/README.md
+docs/data-model/critical-flows.md
+docs/data-model/entities.md
+docs/data-model/relationships.md
+docs/documentation-audit/2026-06-17-confidence-and-verification-audit.md
+docs/domains/thread-lifecycle.md
+docs/domains/thread-state-machine.md
+docs/domains/thread-troubleshooting.md
+docs/onboarding/feature-development-walkthrough.md
+docs/onboarding/first-day.md
+docs/onboarding/glossary.md
+docs/onboarding/production-support.md
+docs/production-support/README.md
+docs/production-support/escalation.md
+docs/production-support/incident-entry-points.md
+docs/production-support/ownership-map.md
+docs/production-support/runbooks.md
 ```
 
 ## Public files
@@ -90,4 +83,4 @@ docs/ai/scripts/claude-handoff
 - https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/latest-diff.patch
 - https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/latest-files.txt
 - https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/latest-branch.txt
-- https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/archive/20260616-224228-README.md
+- https://github.com/sharkydmm/ngdevstudio-ai-handoffs/blob/main/pepper-business/archive/20260617-102654-README.md
