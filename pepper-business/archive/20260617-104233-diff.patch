@@ -1,0 +1,225 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index a33955031..4f123bc8f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -4,7 +4,7 @@ Operational guide for AI coding agents working in this repository.
+ 
+ ## 📌 AI Documentation Metadata
+ 
+-- **Last reviewed:** 2026-06-16
++- **Last reviewed:** 2026-06-17
+ - **Source branch:** `vex-na-update-docs`
+ - **Documentation scope:**
+   - `AGENTS.md`
+@@ -25,16 +25,19 @@ Supporting docs for AI agents (read on demand — see Context Loading Strategy b
+ | Doc | Read it when |
+ |-----|--------------|
+ | [docs/START_HERE.md](docs/START_HERE.md) | First time in the repo, or you need the system overview + a map of where everything lives. |
+-| [docs/onboarding/README.md](docs/onboarding/README.md) (+ first-week · local-development · common-workflows · debugging-guide · deployment-and-environments · backend-engineer) | Onboarding a new engineer: ramp plan, local setup, the recurring workflows, debugging/incident investigation, and how to deploy safely. **Canonical onboarding hub.** |
++| [docs/onboarding/README.md](docs/onboarding/README.md) (+ first-day · first-week · local-development · common-workflows · feature-development-walkthrough · debugging-guide · production-support · deployment-and-environments · glossary · backend-engineer) | Onboarding a new engineer (or AI agent): day-1 access checklist, ramp plan, local setup, the recurring workflows, an end-to-end feature walkthrough (real shipped change), debugging/incident investigation, production support, how to deploy safely, and the domain glossary. **Canonical onboarding hub.** |
+ | [docs/architecture/system-context.md](docs/architecture/system-context.md) | You need the big-picture data-flow diagram and the trust/ownership boundaries between Merchy and external systems. |
+ | [docs/domains/README.md](docs/domains/README.md) | You need a deep dive on a business domain (why it exists, entities, workflows, debugging) — merchant lifecycle, billing accounts, contracts & packages, threads, invoicing, GAM, Ocular, Clicky. |
++| [docs/data-model/README.md](docs/data-model/README.md) (+ [entities](docs/data-model/entities.md) · [relationships](docs/data-model/relationships.md) · [critical-flows](docs/data-model/critical-flows.md)) | You need the **cross-domain data model**: what the core business entities are, their Eloquent relationships/FK chains (app-level, not DB-enforced), polymorphic + type-conditional relations, and which entities are revenue/moderation/reporting-critical. **Canonical data-model atlas.** |
+ | [docs/product/feature-map.md](docs/product/feature-map.md) | You need the **internal-vs-external feature matrix** (which of the 9 roles can use each feature) and a feature→code index. |
+ | [docs/product/ui-navigation.md](docs/product/ui-navigation.md) | You need the **UI menu structure, full route table, and key UI flows** (the frontend SPA lives in the separate `pepperbusinessview` repo). |
+ | [docs/product/roles-and-permissions.md](docs/product/roles-and-permissions.md) | You need the **role catalogue** and how a permission flows from `config/permissions/<role>.php` → login → frontend gate. |
+ | [docs/api/endpoints.md](docs/api/endpoints.md) | You need the **current API endpoint reference** (generated from `routes/api.php`), auth groups, and known dead routes. |
+ | [docs/reference/country-configuration.md](docs/reference/country-configuration.md) | You need per-country invoicing thresholds, accounting apps, currency, or the Pepper B2C site mapping (incl. the ES skip / PL thresholds). |
+ | [docs/operations/README.md](docs/operations/README.md) (+ [scheduled-jobs](docs/operations/scheduled-jobs.md) · [queue-architecture](docs/operations/queue-architecture.md) · [troubleshooting-automation](docs/operations/troubleshooting-automation.md)) | You need to know what runs automatically (crons), the queue/worker topology, or how to troubleshoot a stuck/failed job. **Canonical automation handbook.** |
++| [docs/production-support/README.md](docs/production-support/README.md) (+ [incident-entry-points](docs/production-support/incident-entry-points.md) · [ownership-map](docs/production-support/ownership-map.md) · [runbooks](docs/production-support/runbooks.md) · [escalation](docs/production-support/escalation.md)) | A production incident is happening and you need the 02:00 quick-start, where-to-look entry points, step-by-step runbooks (queue/jobs/reporting/invoices/Ocular/Clicky/onboarding), the ownership map, or escalation criteria. **Canonical incident-response handbook.** |
+ | [docs/domains/user-lifecycle.md](docs/domains/user-lifecycle.md) (+ [state machine](docs/domains/user-state-machine.md) · [troubleshooting](docs/domains/user-lifecycle-troubleshooting.md)) | You need how people register/onboard/log in/get access, the user state model (status/verified/per-business role), partner user types, or login/permission debugging. **Canonical identity handbook.** |
++| [docs/domains/thread-lifecycle.md](docs/domains/thread-lifecycle.md) (+ [state machine](docs/domains/thread-state-machine.md) · [troubleshooting](docs/domains/thread-troubleshooting.md)) | You need how Deals/Campaigns are created/moderated/approved/published, the `status`/`accepted`/`assignee` state triple, country ownership, queue routing, visibility, GAM line sync, or to debug a stuck/invisible/unpublishable thread. **Canonical thread handbook.** |
+ | [docs/communications/README.md](docs/communications/README.md) (+ [catalog](docs/communications/notification-catalog.md) · [architecture](docs/communications/email-architecture.md) · [troubleshooting](docs/communications/troubleshooting.md)) | You need what emails/Slack notifications are sent, why/to whom, the event→listener→Mailable pattern, subscriptions, or to debug a missing/duplicate email. **Canonical communications handbook.** |
+ | [docs/integrations/google-ad-manager/README.md](docs/integrations/google-ad-manager/README.md) (+ architecture · entity-model · targeting · synchronization · troubleshooting) | You need how GAM works — SOAP orders/lines/creatives/targeting, the Thread→line status sync, the AliExpress rule, or to debug a GAM/SOAP failure. **Canonical GAM handbook.** |
+ | [docs/integrations/pepper-b2c/README.md](docs/integrations/pepper-b2c/README.md) (+ architecture · data-model · troubleshooting) | You need how Pepper Business talks to the consumer platforms (MyDealz/HotUKDeals/…) — per-country OAuth1, merchant/thread/group/event reads, caching, mock-vs-real, or to debug a B2C sync failure. **Canonical Pepper B2C handbook.** |
+diff --git a/docs/START_HERE.md b/docs/START_HERE.md
+index 21ba268b8..dd104e436 100644
+--- a/docs/START_HERE.md
++++ b/docs/START_HERE.md
+@@ -45,7 +45,7 @@
+ > Full file-level detail — models, controllers, enums, events, jobs, **invariants**, **common mistakes** — is in
+ > [`docs/ai/domain-map.md`](ai/domain-map.md). This is just the orientation summary.
+ 
+-- **Threads (Deals & Campaigns)** — `ThreadType` DEAL=1/CAMPAIGN=2. Status = `ThreadStatus` (non-contiguous ints, audience-dependent labels). Never hard-deleted; transitions go through the service ([statuses](api/statuses.md), [ADR](architecture/decisions/thread-status-design.md)).
++- **Threads (Deals & Campaigns)** — `ThreadType` DEAL=1/CAMPAIGN=2 on one `threads` table. Lifecycle state is the *triple* `status`+`accepted`+`assignee` (UNASSIGNED/ASSIGNED/ACCEPTED are computed from `status=NULL`, never stored). Never hard-deleted; transitions go through the service; **publish requires accept** ([thread lifecycle](domains/thread-lifecycle.md) · [state machine](domains/thread-state-machine.md) · [troubleshooting](domains/thread-troubleshooting.md), [statuses](api/statuses.md), [ADR](architecture/decisions/thread-status-design.md)).
+ - **Businesses & users** — per-country feature gates (deal/promotion/campaign enabled-country tables). Blocking a business logs out its users and force-flushes running invoices. **Promotion eligibility = verified billing OR an APPROVED network.**
+ - **Contracts & packages** — daily activate/expire crons feed billing.
+ - **Finance (Billing / Invoicing / Payments / Loyalty)** — totals come from **Metabase**, never recomputed; grouped by billing account + country; sub-threshold amounts carry forward in `RunningInvoice` ([finance hub](finance/README.md), [invoicing flow](invoicing-flow-onboarding.md), [ADR](architecture/decisions/metabase-source-of-truth.md)).
+@@ -152,9 +152,12 @@ Index: [`docs/architecture/README.md`](architecture/README.md). High-traffic one
+ | How roles & permissions gate access | [`docs/product/roles-and-permissions.md`](product/roles-and-permissions.md) |
+ | The API endpoint reference | [`docs/api/endpoints.md`](api/endpoints.md) |
+ | What runs automatically (crons/queues) + how to fix it | [`docs/operations/README.md`](operations/README.md) |
++| I got a production alert right now — where do I start? | [`docs/production-support/README.md`](production-support/README.md) |
+ | How users register / log in / get access (identity lifecycle) | [`docs/domains/user-lifecycle.md`](domains/user-lifecycle.md) |
++| How deals/campaigns are created, moderated, published (thread lifecycle) | [`docs/domains/thread-lifecycle.md`](domains/thread-lifecycle.md) |
+ | What emails/notifications are sent + why + to whom | [`docs/communications/README.md`](communications/README.md) |
+ | Deep dive on a domain | [`docs/domains/README.md`](domains/README.md) |
++| Core business entities & how they relate (data model) | [`docs/data-model/README.md`](data-model/README.md) |
+ | Set up & ship a change | [`docs/onboarding/README.md`](onboarding/README.md) |
+ | The big picture & data flows | [`docs/architecture/system-context.md`](architecture/system-context.md) |
+ | Which files own a domain | [`docs/ai/domain-map.md`](ai/domain-map.md) |
+diff --git a/docs/ai/domain-map.md b/docs/ai/domain-map.md
+index 5303ef965..41a71ec08 100644
+--- a/docs/ai/domain-map.md
++++ b/docs/ai/domain-map.md
+@@ -3,6 +3,7 @@
+ A navigational index of the real business/code domains in this repo, so an agent can load the right context before editing. **Navigational, not authoritative** — follow the linked files/docs for behaviour, and treat anything marked *Unknown / verify* as a lead to check, not a fact.
+ 
+ Read first: `AGENTS.md` (operational rules) and `docs/architecture/` (ADRs — *why* intentional patterns exist).
++For the **cross-domain entity/relationship picture** (what the entities are and how they connect, with code-cited Eloquent relationships), see the [Data Model Atlas](../data-model/README.md).
+ 
+ **Shared conventions** (so they aren't repeated per domain):
+ - **B2B vs B2C / Business vs Merchant:** this repo is the **B2B** side; the **B2C** Pepper Core platforms render/consume what's configured here. A **Business** (B2B) maps to one-or-more **Merchant**s (B2C) via `BusinessMerchant` — don't conflate the two ([ADR](../architecture/decisions/platform-topology-b2b-b2c.md)).
+@@ -24,9 +25,9 @@ Read first: `AGENTS.md` (operational rules) and `docs/architecture/` (ADRs — *
+ - **Enums:** `ThreadStatus` (source of truth — non-contiguous ints), `ThreadType`, `ThreadQueue`, `ThreadAction`, `ThreadActivity`, `ThreadStatusFilter`, `PepperThreadType`
+ - **Events/Ocular:** `ArchiveThreads`, `ThreadAcceptedOrPublished`, `SubmittedComment`; Ocular `ThreadData/ThreadStatusChanged/ThreadSubmission/ThreadAssigned`
+ - **Jobs/commands:** `Jobs/ThreadsLastActivityAndDeclinedColumnsSync`, `AutoArchiveThreads` (`threads:archive`)
+-- **Docs/ADR:** `docs/threads/business-flow.md`, `docs/api/statuses.md`, [thread-status-design](../architecture/decisions/thread-status-design.md)
+-- **⚠ Invariants:** never hard-deleted (status/archive only); status changes go through the service (drive routing, visibility, notifications, Ocular). Target country must be within the Business's enabled countries.
+-- **Common mistakes:** flipping `status` directly; treating same-label statuses (`2`/`4`, `3`/`5`) as identical; assuming `ThreadStatusFilter` covers all statuses.
++- **Docs/ADR:** [thread-lifecycle](../domains/thread-lifecycle.md) · [thread-state-machine](../domains/thread-state-machine.md) · [thread-troubleshooting](../domains/thread-troubleshooting.md) (**canonical**); `docs/threads/business-flow.md` (intro), `docs/api/statuses.md`, [thread-status-design](../architecture/decisions/thread-status-design.md)
++- **⚠ Invariants:** never hard-deleted (status/archive only); status changes go through the service (drive routing, visibility, notifications, Ocular, GAM line state). Target country must be within the Business's enabled countries. **Publish requires `accepted = 1`** (`actualPublish` short-circuits otherwise).
++- **Common mistakes:** treating the `status` column as the lifecycle state (UNASSIGNED/ASSIGNED/ACCEPTED are *computed* from `status=NULL`+`assignee`+`accepted`, never stored); flipping `status` directly; treating same-label statuses (`2`/`4`, `3`/`5`) as identical; filtering `status` instead of the `accepted` column for submitted/accepted threads; assuming `ThreadStatusFilter` covers all statuses.
+ 
+ ### Businesses & Business Users — partner orgs and their scoped users
+ - **Models:** `app/Business.php`, `app/BusinessesManagers.php`, `app/RoleUser.php`, feature-gate tables (`BusinessesEnableCampaigns`, `BusinessesEnableComments`, `BusinessesKeyCountries`, `BusinessDealSubmissionEnabledCountries`, `BusinessPromotionSubmissionEnabledCountries`), `BusinessGoogleAdvertiser`, `BusinessCpmPrice`/`BusinessCpmImpression`
+diff --git a/docs/domains/README.md b/docs/domains/README.md
+index 33bc90298..c96baa2fa 100644
+--- a/docs/domains/README.md
++++ b/docs/domains/README.md
+@@ -4,7 +4,8 @@ Deep-dive documentation for each major business domain in Pepper Business (Merch
+ shape: **why it exists · key entities · main workflows · where the code starts · major services · external
+ dependencies · common debugging paths**.
+ 
+-This is the *understanding* layer. For a one-line "which file owns X" lookup use [`docs/ai/domain-map.md`](../ai/domain-map.md);
++This is the *understanding* layer. For the **cross-domain entity/relationship map** (what the entities are and how they
++connect) use the [Data Model Atlas](../data-model/README.md); for a one-line "which file owns X" lookup use [`docs/ai/domain-map.md`](../ai/domain-map.md);
+ for *why* a convention exists use the [ADRs](../architecture/README.md); for the big-picture data flow use
+ [`system-context.md`](../architecture/system-context.md).
+ 
+@@ -16,7 +17,7 @@ for *why* a convention exists use the [ADRs](../architecture/README.md); for the
+ | Identity, Access, User & Partner lifecycle | [user-lifecycle.md](user-lifecycle.md) (+ [state machine](user-state-machine.md), [troubleshooting](user-lifecycle-troubleshooting.md)) | How people enter/access/use/leave: registration, invitations, verification, login, roles per business, partner types, settings & submission limits, risk audit |
+ | Billing Accounts | [billing-accounts.md](billing-accounts.md) | The `Billing` entity, polymorphic `BillingSettings`, owners, role as the invoice grouping key |
+ | Contracts & Packages | [contracts-and-packages.md](contracts-and-packages.md) | CPC vs Package commercial agreements, the activate/expire cron lifecycle, link to invoicing |
+-| Threads (Deals & Campaigns) | [../threads/business-flow.md](../threads/business-flow.md) | Deal vs campaign, country terms, the 5-step review/publish lifecycle, queue routing |
++| Threads (Deals & Campaigns) | [thread-lifecycle.md](thread-lifecycle.md) (+ [state machine](thread-state-machine.md), [troubleshooting](thread-troubleshooting.md)) | **Canonical thread domain hub.** Deal vs campaign, country ownership, creation→moderation→approval→publication, the `status`/`accepted`/`assignee` triple, queue routing, visibility, GAM line sync, campaign reporting, risk audit. (Product-narrative intro: [../threads/business-flow.md](../threads/business-flow.md).) |
+ | Invoice generation | [../invoicing-flow-onboarding.md](../invoicing-flow-onboarding.md) | Metabase-sourced standard + loyalty invoicing, running balances, canonical schedule |
+ | Google Ad Manager | [../google/ad-manager.md](../google/ad-manager.md) | GAM orders/lines/creatives over SOAP, the AliExpress custom-targeting rule |
+ | Ocular integration | [../ocular/README.md](../ocular/README.md) | The outbound analytics event pipeline, the 124-event catalog, troubleshooting + external-contract rules |
+diff --git a/docs/index.md b/docs/index.md
+index 7c8fa53fb..e2944e270 100644
+--- a/docs/index.md
++++ b/docs/index.md
+@@ -13,7 +13,7 @@ For *operational rules* read [`AGENTS.md`](../AGENTS.md); for *why* a convention
+ ## Orientation (read these first)
+ * [**START_HERE.md**](START_HERE.md) — primary entry point: system overview, where everything lives.
+ * [Domain Knowledge Base](domains/README.md) — deep dives per business domain (why, entities, workflows, debugging).
+-* [**Onboarding hub**](onboarding/README.md) — new-engineer ramp: [first week](onboarding/first-week.md) · [local dev](onboarding/local-development.md) · [common workflows](onboarding/common-workflows.md) · [debugging](onboarding/debugging-guide.md) · [deployment & environments](onboarding/deployment-and-environments.md) · [backend-engineer reference](onboarding/backend-engineer.md).
++* [**Onboarding hub**](onboarding/README.md) — new-engineer ramp: [first day](onboarding/first-day.md) · [first week](onboarding/first-week.md) · [local dev](onboarding/local-development.md) · [common workflows](onboarding/common-workflows.md) · [feature walkthrough](onboarding/feature-development-walkthrough.md) · [debugging](onboarding/debugging-guide.md) · [production support](onboarding/production-support.md) · [deployment & environments](onboarding/deployment-and-environments.md) · [glossary](onboarding/glossary.md) · [backend-engineer reference](onboarding/backend-engineer.md).
+ * [System Context & Data Flow](architecture/system-context.md) — the big-picture diagram and how data moves between systems.
+ * [AGENTS.md](../AGENTS.md) — operational rules for working in this repo.
+ * [AI Domain Map](ai/domain-map.md) — per-domain index of models/services/routes/enums/invariants.
+@@ -38,6 +38,12 @@ For *operational rules* read [`AGENTS.md`](../AGENTS.md); for *why* a convention
+ * [Permissions](api/permissions.md)
+ * [Statuses](api/statuses.md) — Thread status codes (non-contiguous ints; labels differ by audience).
+ 
++## Data Model (`docs/data-model/`)
++* [**Data Model Atlas**](data-model/README.md) — **canonical**: core business entities + how they relate; the 30-minute path.
++  * [Entities](data-model/entities.md) — per-entity cards (purpose, table, ownership, relationships, lifecycle, revenue/operational impact).
++  * [Relationships](data-model/relationships.md) — one-to-many, `hasManyThrough`, polymorphic, the critical (app-level) FK chains, event-driven links, integration touchpoints.
++  * [Critical flows & risks](data-model/critical-flows.md) — revenue/moderation/reporting-critical entities + data-model risks (incl. no DB-level FKs).
++
+ ## Merchants & Businesses
+ * [**Merchant / Business lifecycle**](domains/merchant-lifecycle.md) — full lifecycle, state machine, cross-system integration, ownership.
+ * [Merchant lifecycle troubleshooting](domains/merchant-lifecycle-troubleshooting.md) — incident runbook.
+@@ -50,7 +56,10 @@ For *operational rules* read [`AGENTS.md`](../AGENTS.md); for *why* a convention
+ * [Roles & Permissions](product/roles-and-permissions.md) · [Feature map (per role)](product/feature-map.md)
+ 
+ ## Threads (Deals & Campaigns)
+-* [Business Flow](threads/business-flow.md)
++* [**Thread lifecycle**](domains/thread-lifecycle.md) — **canonical**: why, entities, creation→moderation→approval→publication, country ownership, queue routing, visibility, GAM sync, campaign reporting, risk audit.
++* [Thread state machine](domains/thread-state-machine.md) — the `status`/`accepted`/`assignee` triple, computed statuses, transition table.
++* [Thread troubleshooting](domains/thread-troubleshooting.md) — submission/visibility/queue/publish/decline/GAM/Ocular incident runbook.
++* [Business Flow](threads/business-flow.md) — original product-narrative intro.
+ * ADR: [Thread status design](architecture/decisions/thread-status-design.md)
+ 
+ ## Finance — Billing, Invoicing & Payments
+@@ -102,6 +111,13 @@ For *operational rules* read [`AGENTS.md`](../AGENTS.md); for *why* a convention
+ * [Event-Triggered Emails](emails/events-triggered-emails.md) — *legacy per-email template detail.*
+ * [Specific / Scheduled events (old version)](emails/links.md)
+ 
++## Production Support & Incident Response (`docs/production-support/`)
++* [**Production Support hub**](production-support/README.md) — **canonical**: the 02:00 quick-start ("alert right now, where do I start?").
++  * [Incident entry points](production-support/incident-entry-points.md) — logs, Bugsnag, queues, scheduled jobs, integrations, reporting/invoice/onboarding failures.
++  * [Ownership map](production-support/ownership-map.md) — subsystems, code owner (verified) vs team owner (undeclared), external dependencies, revenue-critical areas.
++  * [Runbooks](production-support/runbooks.md) — queue backlog · failed jobs · reporting discrepancies · missing invoices · Ocular · Clicky · merchant onboarding.
++  * [Escalation paths](production-support/escalation.md) — check-first → evidence → verify → escalate; invariants you must not break.
++
+ ## Operations — Automation & Queues (`docs/operations/`)
+ * [**Operations hub**](operations/README.md) — canonical automation handbook.
+   * [Scheduled Jobs Catalog](operations/scheduled-jobs.md) — what runs, when, why, business impact, risk audit.
+diff --git a/docs/onboarding/README.md b/docs/onboarding/README.md
+index 5fd824a29..ae6bc5f54 100644
+--- a/docs/onboarding/README.md
++++ b/docs/onboarding/README.md
+@@ -8,11 +8,15 @@
+ 
+ | Doc | What it gives you |
+ |-----|-------------------|
+-| [first-week.md](first-week.md) | A day-by-day ramp plan: what to read, set up, and ship in week one. **Start here.** |
++| [first-day.md](first-day.md) | The literal day-1 checklist: **access provisioning**, get the stack up, green-test baseline, first commit. **Start here on day 1.** |
++| [first-week.md](first-week.md) | A day-by-day ramp plan: what to read, set up, and ship in week one. |
+ | [local-development.md](local-development.md) | Docker setup, services/ports, running tests, lint/PHPStan, DB, the frontend. |
+ | [common-workflows.md](common-workflows.md) | The recurring jobs experienced engineers do — make a change, review an MR, onboard a new integration, the non-obvious procedures. |
+-| [debugging-guide.md](debugging-guide.md) | Debugging entry points, common production issues, and how to investigate an incident. |
+-| [deployment-and-environments.md](deployment-and-environments.md) | Environments (beta/staging/production), the CI/CD pipeline, branch→env mapping, and how to deploy safely. |
++| [feature-development-walkthrough.md](feature-development-walkthrough.md) | **How a feature goes from idea to production**, traced through a real shipped change (VEX-297) + the "how we build features" patterns/mistakes/techniques. |
++| [debugging-guide.md](debugging-guide.md) | Debugging entry points (local + prod), common issues, and how to investigate an incident. |
++| [production-support.md](production-support.md) | The **production** layer: logs, APM (Bugsnag/Atatus), queues/Horizon, the incident loop, safe mitigations, and the on-call gaps. |
++| [deployment-and-environments.md](deployment-and-environments.md) | Environments (beta/staging/production), the CI/CD pipeline, branch→env mapping, deploy safely. *(Covers what a "deployment-overview" / "environments" doc would.)* |
++| [glossary.md](glossary.md) | The **domain/jargon** glossary (Business vs Merchant, Thread/Deal/Campaign, running invoice, network, GAM line…). Acronyms are in [miscellaneous/glossary](../miscellaneous/glossary.md). |
+ | [backend-engineer.md](backend-engineer.md) | The original practical reference (mental model, tests, conventions). Still valid; the docs above expand it. |
+ 
+ ## The 60-second mental model
+@@ -40,5 +44,25 @@
+ | Per-domain file index | [ai/domain-map](../ai/domain-map.md) |
+ | Why a convention exists | [ADRs](../architecture/README.md) |
+ 
++## For AI agents (recommended discovery order)
++
++Onboarding an AI coding agent is the same problem with a different reader. The authoritative loading strategy is
++[`AGENTS.md` → Context Loading Strategy](../../AGENTS.md) — **don't preload everything; prefer targeted reads.** Recommended order:
++
++1. [`AGENTS.md`](../../AGENTS.md) — operational rules + the *AI Documentation Index* and *Quick answers — "where is X?"* tables.
++2. [START_HERE](../START_HERE.md) — system overview + debugging entry points.
++3. [ai/domain-map](../ai/domain-map.md) — per-domain index of models/services/routes/enums/**invariants**/common mistakes (your daily lookup).
++4. [ai/repository-memory](../ai/repository-memory.md) — high-signal traps to recall before editing.
++5. The relevant **domain hub** ([domains](../domains/README.md)) + its **ADR(s)** ([architecture](../architecture/README.md)) for the task at hand.
++6. For reviews: [ai/code-review-guide](../ai/code-review-guide.md) + the [MR Investigation Workflow](../../AGENTS.md).
++
++**Architectural hubs to anchor on:** [system-context](../architecture/system-context.md) (data flow), [domains hub](../domains/README.md),
++the four integration hubs ([Pepper B2C](../integrations/pepper-b2c/README.md) · [Clicky](../integrations/clicky/README.md) ·
++[GAM](../integrations/google-ad-manager/README.md) · [Ocular](../ocular/README.md)), [finance](../finance/README.md),
++[analytics](../analytics/README.md), [operations](../operations/README.md).
++
+ ## Onboarding coverage & gaps
+-See [first-week.md → coverage & gaps](first-week.md#coverage-assessment--known-gaps) for the honest assessment of what's documented vs still tribal knowledge.
++See [first-week.md → coverage & gaps](first-week.md#coverage-assessment--known-gaps) for the honest assessment of what's
++documented vs still tribal knowledge. The recurring tribal items — **access provisioning** (now scaffolded in
++[first-day](first-day.md)), **on-call/alerting/rollback** (scaffolded in [production-support](production-support.md)), and a
++**domain-ownership map** (still open) — are tracked there.
+diff --git a/docs/onboarding/common-workflows.md b/docs/onboarding/common-workflows.md
+index b0d058096..559e9a183 100644
+--- a/docs/onboarding/common-workflows.md
++++ b/docs/onboarding/common-workflows.md
+@@ -2,6 +2,10 @@
+ 
+ The recurring jobs experienced engineers do regularly. Practical, step-by-step, with the non-obvious bits called out. Source: code + `AGENTS.md` + the domain/integration docs.
+ 
++> **Want the whole loop traced on a real shipped feature** (idea → investigation → service change → tests → review → MR →
++> deploy → verify)? See [feature-development-walkthrough](feature-development-walkthrough.md) — this section is the
++> condensed checklist; the walkthrough is the worked example.
++
+ ## 1. Make a change (the standard flow)
+ 
+ 1. **Locate the domain** in [ai/domain-map](../ai/domain-map.md) → open its `app/Services/<Domain>/` + models (not the controller — that's just the entry point).
