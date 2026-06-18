@@ -1,8 +1,0 @@
- AGENTS.md                           |  7 +++++--
- docs/START_HERE.md                  |  5 ++++-
- docs/ai/domain-map.md               |  7 ++++---
- docs/domains/README.md              |  5 +++--
- docs/index.md                       | 20 ++++++++++++++++++--
- docs/onboarding/README.md           | 32 ++++++++++++++++++++++++++++----
- docs/onboarding/common-workflows.md |  4 ++++
- 7 files changed, 66 insertions(+), 14 deletions(-)
